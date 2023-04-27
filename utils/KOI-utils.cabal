@@ -1,0 +1,36 @@
+cabal-version:       3.0
+name:                KOI-utils
+version:             0.1.0.0
+license-file:        LICENSE
+author:              Iavor Diatchki
+maintainer:          iavor.diatchki@gmail.com
+build-type:          Simple
+extra-source-files:  CHANGELOG.md
+
+library
+  hs-source-dirs: src
+  exposed-modules:
+    KOI.Basics,
+    KOI.Utils,
+    KOI.Field,
+    KOI.Bag,
+    KOI.CallJS,
+    KOI.Enum,
+    KOI.RNG,
+    KOI.RNGM,
+    KOI.SaveLoad,
+    KOI.ColorPicker,
+    KOI.Options
+  build-depends:
+    base >=4.13, containers, text, tf-random, aeson, vector,
+    template-haskell,
+    bytestring, zlib, base64-bytestring, th-abstraction
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+  default-extensions:
+    BlockArguments, ImportQualifiedPost, OverloadedStrings, DeriveGeneric,
+    FlexibleContexts, MonoLocalBinds, GeneralizedNewtypeDeriving,
+    TemplateHaskell
+
+
+
