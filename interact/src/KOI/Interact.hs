@@ -10,6 +10,7 @@ module KOI.Interact
 
     -- ** User input
   , askInputs
+  , askInputsMaybe
   , choose
   , chooseMaybe
 

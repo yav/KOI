@@ -10,6 +10,7 @@ module KOI.InteractImpl
   -- * Building Interactions
   , Interact
   , askInputs
+  , askInputsMaybe
   , choose
   , chooseMaybe
   , view
@@ -262,6 +263,27 @@ askInputs q opts =
   in (curS { iQuestion = q
            , iAsk = Map.union (Map.fromList (map cont opts)) (iAsk curS) }, os)
 
+{- | Ask one or more players a question and continue based on their answer.
+
+  * Returns 'Nothing' if there are no valid answers.
+  * If there is only one possible answer, then it is automatically selected
+    without asking the player.
+-}
+askInputsMaybe ::
+  Component c =>
+  Text {- ^ Desciption of what we are asking -} ->
+  [ (WithPlayer (AppInput c), Text, Interact c a) ]
+  {- ^ Possible answers for various players.
+
+       * The first component specifies the player and what they see.
+       * The second is a description of the choice.
+       * The third is how to continue if this answer is selected. -} ->
+  Interact c (Maybe a)
+askInputsMaybe txt opts =
+  case opts of
+    [] -> pure Nothing
+    [(_,_,m)] -> Just <$> m
+    _ -> Just <$> askInputs txt opts
 
 
 -- | Resume execution based on player input
