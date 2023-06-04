@@ -11,6 +11,7 @@ module KOI.Interact
     -- ** User input
   , askInputs
   , askInputsMaybe
+  , askInputsMaybe_
   , choose
   , chooseMaybe
 

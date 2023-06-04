@@ -11,6 +11,7 @@ module KOI.InteractImpl
   , Interact
   , askInputs
   , askInputsMaybe
+  , askInputsMaybe_
   , choose
   , chooseMaybe
   , view
@@ -284,6 +285,31 @@ askInputsMaybe txt opts =
     [] -> pure Nothing
     [(_,_,m)] -> Just <$> m
     _ -> Just <$> askInputs txt opts
+
+
+{- | Ask one or more players a question and continue based on their answer.
+
+  * Equivalent to `pure ()` if there are no valid choices.
+  * If there is only one possible answer, then it is automatically selected
+    without asking the player.
+-}
+askInputsMaybe_ ::
+  Component c =>
+  Text {- ^ Desciption of what we are asking -} ->
+  [ (WithPlayer (AppInput c), Text, Interact c ()) ]
+  {- ^ Possible answers for various players.
+
+       * The first component specifies the player and what they see.
+       * The second is a description of the choice.
+       * The third is how to continue if this answer is selected. -} ->
+  Interact c ()
+askInputsMaybe_ txt opts =
+  case opts of
+    []        -> pure ()
+    [(_,_,m)] -> m
+    _         -> askInputs txt opts
+
+
 
 
 -- | Resume execution based on player input
