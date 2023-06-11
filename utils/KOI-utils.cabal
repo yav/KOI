@@ -20,16 +20,18 @@ library
     KOI.RNGM,
     KOI.SaveLoad,
     KOI.ColorPicker,
-    KOI.Options
+    KOI.Options,
+    KOI.PP
   build-depends:
     base >=4.13, containers, text, tf-random, aeson, vector,
+    pretty,
     template-haskell,
     bytestring, zlib, base64-bytestring, th-abstraction
   ghc-options:         -Wall
   default-language:    Haskell2010
   default-extensions:
     BlockArguments, ImportQualifiedPost, OverloadedStrings, DeriveGeneric,
-    FlexibleContexts, MonoLocalBinds, GeneralizedNewtypeDeriving,
+    FlexibleContexts, MonoLocalBinds, GeneralizedNewtypeDeriving, ViewPatterns,
     TemplateHaskell
 
 
