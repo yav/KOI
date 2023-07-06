@@ -14,11 +14,11 @@ module KOI.InteractImpl
   , askInputsMaybe_
   , choose
   , chooseMaybe
-  , view
   , update
   , localUpdate
   , localUpdate_
   , getState
+  , getsState
 
   , the
   , setThe
@@ -36,12 +36,12 @@ import qualified Data.Set as Set
 import Data.List(foldl')
 import Control.Monad(liftM,ap)
 import GHC.Generics(Generic)
+import Optics
 
 import Data.Aeson (ToJSON(..), FromJSON(..), (.=), (.:?))
 import qualified Data.Aeson as JS
 
 import KOI.Basics
-import KOI.Field
 import KOI.AppTypes
 
 startGame ::
@@ -324,21 +324,20 @@ continueWith msg = Interact $
         in f s1 os
       Nothing -> (s,os)
 
--- | Access a component of the current game state
-view :: Component c => (AppState c -> a) -> Interact c a
-view f = Interact $
+getsState :: Component c => (AppState c -> a) -> Interact c a
+getsState f = Interact $
   \k ->
   \s os -> case iGame s of
              st | finalState (iC s) st -> (s,os)
                 | otherwise -> k (f st) s os
 
 -- | Get the value of the given field of the state
-the :: Component c => Field (AppState c) a -> Interact c a
-the f = view (getField f)
+the :: Component c => Lens' (AppState c) a -> Interact c a
+the f = getsState (view f)
 
 -- | Access the current game state
 getState :: Component c => Interact c (AppState c)
-getState = view id
+getState = getsState id
 
 -- | Update the current game state
 update :: Component c => AppUpdate c -> Interact c ()
@@ -361,14 +360,15 @@ localUpdate f = Interact $
 localUpdate_ :: Component c => (AppState c -> AppState c) -> Interact c ()
 localUpdate_ f = localUpdate \s -> ((),f s)
 
-setThe :: Component c => Field (AppState c) a -> a -> Interact c ()
-setThe x a = localUpdate_ (setField x a)
+setThe :: Component c => Lens' (AppState c) a -> a -> Interact c ()
+setThe x a = localUpdate_ (set x a)
 
-updateThe :: Component c => Field (AppState c) a -> (a -> (b,a)) -> Interact c b
-updateThe x f = localUpdate (updField' x f)
+updateThe :: Component c => Lens' (AppState c) a -> (a -> (b,a)) -> Interact c b
+updateThe x f = localUpdate \s -> case f (view x s) of
+                                    (b,x1) -> (b, set x x1 s)
 
-updateThe_ :: Component c => Field (AppState c) a -> (a -> a) -> Interact c ()
-updateThe_ x f = localUpdate_ (updField x f)
+updateThe_ :: Component c => Lens' (AppState c) a -> (a -> a) -> Interact c ()
+updateThe_ x f = localUpdate_ (over x f)
 
 
 -- | Save the current game state.

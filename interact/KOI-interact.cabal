@@ -19,6 +19,7 @@ library
     base >=4.13,
     KOI-utils,
     containers, text, aeson, bytestring,
+    optics,
     websockets-snap, snap-core, websockets, snap-server
   ghc-options:         -Wall
   default-language:    Haskell2010

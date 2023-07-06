@@ -16,8 +16,8 @@ module KOI.Interact
   , chooseMaybe
 
     -- ** Read the state
-  , view
   , getState
+  , getsState
 
     -- ** Modify the state
   , update

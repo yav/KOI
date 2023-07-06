@@ -12,7 +12,6 @@ library
   exposed-modules:
     KOI.Basics,
     KOI.Utils,
-    KOI.Field,
     KOI.Bag,
     KOI.CallJS,
     KOI.Enum,
