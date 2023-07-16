@@ -5,6 +5,7 @@ module KOI.ResourceQ
   , rqFromListRandom
   , rqFromListOrdered
   , rqTake
+  , rqTakeN
   , rqDiscard
   ) where
 
@@ -48,6 +49,13 @@ rqTake ResourceQ { .. } =
                                            , qDiscarded = []
                                            , qRandom    = g })
             ([],_) -> Nothing
+
+-- | Try to take the given number of things. Shuffles if needed.
+-- May return fewer if not enough present.
+rqTakeN :: Int -> ResourceQ a -> [a]
+rqTakeN n q
+  | n > 0, Just (a,new) <- rqTake q = a : rqTakeN (n-1) new
+  | otherwise = []
 
 -- | Place something in the discard pile.
 rqDiscard :: a -> ResourceQ a -> ResourceQ a
