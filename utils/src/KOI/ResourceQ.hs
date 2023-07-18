@@ -52,10 +52,12 @@ rqTake ResourceQ { .. } =
 
 -- | Try to take the given number of things. Shuffles if needed.
 -- May return fewer if not enough present.
-rqTakeN :: Int -> ResourceQ a -> [a]
+rqTakeN :: Int -> ResourceQ a -> ([a], ResourceQ a)
 rqTakeN n q
-  | n > 0, Just (a,new) <- rqTake q = a : rqTakeN (n-1) new
-  | otherwise = []
+  | n > 0, Just (a,new) <- rqTake q =
+    let (as,q1) = rqTakeN (n-1) new
+    in (a : as, q1)
+  | otherwise = ([],q)
 
 -- | Place something in the discard pile.
 rqDiscard :: a -> ResourceQ a -> ResourceQ a
