@@ -360,14 +360,17 @@ localUpdate f = Interact $
 localUpdate_ :: Component c => (AppState c -> AppState c) -> Interact c ()
 localUpdate_ f = localUpdate \s -> ((),f s)
 
-setThe :: Component c => Lens' (AppState c) a -> a -> Interact c ()
+-- setThe :: Component c => Lens' (AppState c) a -> a -> Interact c ()
+setThe :: (Component c, Is k A_Setter) =>
+          Optic' k is (AppState c) a -> a -> Interact c ()
 setThe x a = localUpdate_ (set x a)
 
 updateThe :: Component c => Lens' (AppState c) a -> (a -> (b,a)) -> Interact c b
 updateThe x f = localUpdate \s -> case f (view x s) of
                                     (b,x1) -> (b, set x x1 s)
 
-updateThe_ :: Component c => Lens' (AppState c) a -> (a -> a) -> Interact c ()
+updateThe_ :: (Component c, Is k A_Setter) =>
+  Optic' k is (AppState c) a -> (a -> a) -> Interact c ()
 updateThe_ x f = localUpdate_ (over x f)
 
 
