@@ -1,0 +1,41 @@
+cabal-version:       3.0
+
+name:                TEMPLATE
+version:             0.1.0.0
+license-file:        LICENSE
+author:              Iavor Diatchki
+maintainer:          iavor.diatchki@gmail.com
+build-type:          Simple
+extra-source-files:  CHANGELOG.md
+
+executable TEMPLATE
+  hs-source-dirs: src
+  main-is: Main.hs
+  other-modules:
+    App.KOI,
+    App.State,
+    App.StateView,
+    App.Input
+
+  build-depends:
+    base,
+    containers,
+    bytestring,
+    text,
+    aeson,
+    KOI-utils,
+    KOI-interact
+
+  default-extensions:
+    DeriveGeneric, DeriveAnyClass,
+    OverloadedStrings,
+    TemplateHaskell,
+    BlockArguments, ImportQualifiedPost, LambdaCase,
+    NamedFieldPuns, RecordWildCards,
+    TypeFamilies
+
+  ghc-options: -Wall
+  default-language:    Haskell2010
+
+
+
