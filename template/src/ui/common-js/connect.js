@@ -1,10 +1,9 @@
 
 // Assumes the following to be in scope:
-//  hsOutMsg (from dynamic.hs)
-//  uiRedraw:     draw state from scratch
-//  uiSetQuestion: set an eplanation for what we are asking
-//  uiQuestion:   present a potential answer to a question
-//  uiUpdate      present an update
+//  uiRedraw:       draw state from scratch
+//  uiSetQuestion:  set an eplanation for what we are asking
+//  uiQuestion:     present a potential answer to a question
+//  uiUpdate        present an update
 const srvConnect = () => {
   const obj = new URL(window.location)
   const info = obj.searchParams
