@@ -1,6 +1,5 @@
 module App.KOI
   ( KOI(..)
-  , Update(..)
   , Interact
   , module KOI.Interact
   ) where
@@ -19,13 +18,11 @@ type Interact = I.Interact KOI
 instance Component KOI where
   type AppState       KOI = State
   type AppStateView   KOI = StateView
-  type AppUpdate      KOI = Update
+  type AppUpdate      KOI = State
   type AppUpdateView  KOI = StateView
   type AppInput       KOI = Input
 
-  doUpdate _ (SetState s) _         = s
-  playerView _                      = getStateView
-  playerUpdateView c p (SetState s) = playerView c p s
-  finalState _                      = stateIsFinal
-
-data Update = SetState State
+  doUpdate _ s _   = s
+  playerView _     = getStateView
+  playerUpdateView = playerView
+  finalState _     = stateIsFinal

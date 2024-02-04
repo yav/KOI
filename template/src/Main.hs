@@ -1,6 +1,5 @@
 module Main where
 
-import KOI.CallJS(jsHandlers)
 import App.KOI
 import App.State
 import App.Input
@@ -10,7 +9,7 @@ main = startApp App
   { appId = KOI
   , appOptions = []
   , appColors = [ "red", "green", "blue", "yellow" ]
-  , appJS = $(jsHandlers [ ''Update, ''Input ])
+  , appJS = []
   , appInitialState = \_rng _opts ps ->
       case ps of
         [p] -> Right (State p 0)
@@ -23,8 +22,7 @@ gameLoop =
   do State p n <- getState
      what <- choose p "What should we do next"
                 [ (Inc, "Increment"), (Dec, "Decrement") ]
-     update $ SetState
-            $ State p
+     update $ State p
               case what of
                 Inc -> n + 1
                 Dec -> n - 1
