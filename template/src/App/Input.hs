@@ -1,21 +1,10 @@
 module App.Input where
 
+import GHC.Generics(Generic)
 import Data.Aeson qualified as JS
 
 data Input = Inc | Dec
-  deriving (Read,Show,Eq,Ord)
+  deriving (Read,Show,Eq,Ord,Generic,JS.ToJSON,JS.FromJSON)
 
-instance JS.ToJSON Input where
-  toJSON i =
-    case i of
-      Inc -> "Inc"
-      Dec -> "Dec"
-
-instance JS.FromJSON Input where
-  parseJSON = JS.withText "Input"
-    \case
-      "Inc" -> pure Inc
-      "Dec" -> pure Dec
-      _     -> fail "Invalid"
 
 

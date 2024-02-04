@@ -14,7 +14,7 @@ main = startApp App
   , appInitialState = \_rng _opts ps ->
       case ps of
         [p] -> Right (State p 0)
-        _   -> Left "We need exactly 1 playerm, see --help"
+        _   -> Left "We need exactly 1 player, see --help"
   , appStart = gameLoop
   }
 

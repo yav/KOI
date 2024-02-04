@@ -1,26 +1,24 @@
 let sendJSON = null
 let playerId = null
-let iconSize = 26
 let gui      = null
 
 function main () {
   const conn = srvConnect()
   playerId = conn.playerId
   sendJSON = conn.sendJSON
-  if (conn.size) iconSize = conn.size
 }
 
 // Redraw the whole state
 function uiRedraw (state) {
-  const body = html.getBody()
+  const body = document.getElementById("content")
   body.innerHTML = ""
   gui = {}
 
-  gui.counter = html.div("")
+  gui.counter = uiFromTemplate("template-counter")
   gui.counter.textContent = "?"
   body.appendChild(gui.counter)
 
-  gui.question = html.div("")
+  gui.question = uiFromTemplate("template-question")
   body.appendChild(gui.question)
 
   uiUpdate(state.game)
@@ -36,10 +34,10 @@ function uiSetQuestion (q) {
 
 // Various things that can be used to answer the question.
 function uiQuestion (q) {
-  const body = html.getBody()
+  const body = document.getElementById("content")
 
   function btn(lab) {
-    const dom = html.div("btn")
+    const dom = uiFromTemplate("template-btn")
     dom.textContent = lab
     dom.addEventListener("click", () => {
       const n = gui.questions.length
@@ -51,15 +49,17 @@ function uiQuestion (q) {
     gui.questions.push(dom)
   }
 
-  hsInput({
-    Inc: () => btn("inc"),
-    Dec: () => btn("dec")
-    })(q.chChoice)
+  switch(q.chChoice) {
+    case "Inc": return btn("inc")
+    case "Dec": return btn("dec")
+  }
+
+  console.log("OTHER", q)
 }
 
 
 function uiUpdate(newS) {
-  gui.counter.textContent = newS[1]
+  gui.counter.textContent = newS
 }
 
 
