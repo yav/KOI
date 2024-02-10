@@ -4,11 +4,12 @@
 <meta charset="UTF-8" />
 <link rel="stylesheet" href="style.css">
 <link rel="icon" href="favicon.ico">
-<script src="main.js"></script>
-<script src="common-js/template.js"></script>
-<script src="common-js/connect.js"></script>
+<script type="module">
+  import main from "./main.ts"
+  document.addEventListener("DOMContentLoaded", main);
+</script>
 </head>
-<body id="body" onload="main()">
+<body id="body">
 <div id="content"></div>
 <div style="display: none">
   <div id="template-counter"></div>
