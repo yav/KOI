@@ -21,7 +21,8 @@ library
     KOI.SaveLoad,
     KOI.ColorPicker,
     KOI.Options,
-    KOI.PP
+    KOI.PP,
+    KOI.DeriveTS
   build-depends:
     base >=4.13, containers, text, tf-random, aeson, vector,
     pretty,
@@ -32,7 +33,7 @@ library
   default-extensions:
     BlockArguments, ImportQualifiedPost, OverloadedStrings, DeriveGeneric,
     FlexibleContexts, MonoLocalBinds, GeneralizedNewtypeDeriving, ViewPatterns,
-    TemplateHaskell, RecordWildCards
+    TemplateHaskell, RecordWildCards, ScopedTypeVariables
 
 
 

@@ -7,6 +7,7 @@ module KOI.PP
   , hsep, fsep
   , brackets, parens, braces
   , nest
+  , commaSep
   ) where
 
 import Data.Text(Text)
@@ -103,6 +104,8 @@ braces = lift1 P.braces
 nest :: Int -> Doc -> Doc
 nest n = lift1 (P.nest n)
 
+commaSep :: [Doc] -> Doc
+commaSep = liftMany (P.hcat . P.punctuate P.comma)
 
 --------------------------------------------------------------------------------
 
