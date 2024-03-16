@@ -10,6 +10,7 @@ extra-source-files:  CHANGELOG.md
 library
   hs-source-dirs: src
   exposed-modules:
+    Test,
     KOI.Basics,
     KOI.Utils,
     KOI.Bag,
@@ -28,7 +29,7 @@ library
     pretty,
     template-haskell,
     bytestring, zlib, base64-bytestring, th-abstraction
-  ghc-options:         -Wall
+  ghc-options:         -Wall -ddump-splices
   default-language:    Haskell2010
   default-extensions:
     BlockArguments, ImportQualifiedPost, OverloadedStrings, DeriveGeneric,
