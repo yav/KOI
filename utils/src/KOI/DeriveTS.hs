@@ -5,47 +5,116 @@ import Control.Applicative((<|>))
 import Data.Text(Text)
 import Data.Text qualified as Text
 import Data.Map(Map)
-import KOI.PP
+import Data.Map qualified as Map
+import Data.Set(Set)
+import Data.Set qualified as Set
+import Text.Read(readMaybe)
 import Language.Haskell.TH.Datatype
 import Language.Haskell.TH.Syntax
 import Language.Haskell.TH
 import Data.Aeson qualified as JS
 import Data.Aeson.Key qualified as JS
+import Data.Aeson.Types qualified as JS
 
-data TSDecl = TSDecl
-  { tsName :: Text
-  , tsParams :: [Text]
-  , tsDef :: TSType
+import KOI.PP
+
+
+type TSModules = Map Text (Map Text (Map Text (TSDecl Name)))
+
+addDecl :: TSDecl Name -> TSModules -> Maybe TSModules
+addDecl d mp =
+  do pkg <- namePackage name
+     mo  <- nameModule name
+     pure (Map.union (Map.singleton (Text.pack pkg)
+                     (Map.singleton (Text.pack mo)
+                     (Map.singleton (Text.pack (nameBase name)) d))) mp)
+  where
+  name = tsName d
+
+-- | Returns a map associating Haskell (pkg,module) names with TS module names
+moduleNames :: TSModules -> Map (Text,Text) Text
+moduleNames db =
+  Map.fromList $
+  concatMap pickName $
+  Map.toList $
+  Map.fromListWith (++)
+  [ (m,[p]) | (p,ms) <- Map.toList (Map.keys <$> db), m <- ms ]
+
+  where
+  pickName (m,ps) =
+    case ps of
+      [p] -> [ ((p,m), m)]
+      _   -> [ ((p,m), p <> "_" <> m) | p <- ps ]
+
+
+--------------------------------------------------------------------------------
+
+
+data TSModule = TSModule
+  { tsmName    :: Text
+  , tsmImports :: [TSImport]
   }
 
-data TSType =
-    TSNamed Text [TSType]
+data TSImport = TSImport
+  { tsiModule :: Text
+  , tsiEntity :: [(Text,Maybe Text)]
+  }
+
+data TSDecl name = TSDecl
+  { tsName   :: name
+  , tsParams :: [Text]
+  , tsDef    :: TSType name
+  }
+
+data TSType name =
+    TSNamed name [TSType name]
+  | TSBuiltIn Text
   | TSLit Text
-  | TSUnion [TSType]
-  | TSTuple [TSType]
-  | TSRecord [(Text, TSType)]
-  | TSArray TSType
-  | TSMap TSType TSType   -- only some types can be keys
+  | TSUnion [TSType name]
+  | TSTuple [TSType name]
+  | TSRecord [(Text, TSType name)]
+  | TSArray (TSType name)
+  | TSMap (TSType name) (TSType name)   -- only some types can be keys
 
-tsString, tsNumber, tsBool, tsNull :: TSType
-tsString = TSNamed "string" []
-tsNumber = TSNamed "number" []
-tsBool   = TSNamed "boolean" []
-tsNull   = TSNamed "null" []
+tsString, tsNumber, tsBool, tsNull :: TSType name
+tsString = TSBuiltIn "string"
+tsNumber = TSBuiltIn "number"
+tsBool   = TSBuiltIn "boolean"
+tsNull   = TSBuiltIn "null"
 
-tsMaybe :: TSType -> TSType
+tsMaybe :: TSType name -> TSType name
 tsMaybe t = TSUnion [ t, tsNull ]
+--------------------------------------------------------------------------------
 
-instance PP TSDecl where
+tsDeclDeps :: Ord name => TSDecl name -> Set name
+tsDeclDeps = tsDeps . tsDef
+
+tsDeps :: Ord name => TSType name -> Set name
+tsDeps ty =
+  case ty of
+    TSNamed x ts -> Set.insert x (list ts)
+    TSBuiltIn {} -> mempty
+    TSLit {}     -> mempty
+    TSUnion ts   -> list ts
+    TSTuple ts   -> list ts
+    TSRecord ts  -> list (map snd ts)
+    TSArray t    -> tsDeps t
+    TSMap k v    -> list [k,v]
+  where
+  list = Set.unions . map tsDeps
+
+--------------------------------------------------------------------------------
+instance PP name => PP (TSDecl name) where
   pp d =
     ("type" <+> pp (tsName d) <.> ps <+> "=") $$ nest 2 (pp (tsDef d))
     where ps = case tsParams d of
                  [] -> mempty
                  ts -> hcat [ "<", commaSep (map pp ts), ">" ]
 
-instance PP TSType where
+instance PP name => PP (TSType name) where
   pp ty =
     case ty of
+      TSBuiltIn txt -> pp txt
       TSNamed x ps ->
         pp x <.>
         case ps of
@@ -69,20 +138,27 @@ instance PP TSType where
       | null xs = open <.> close
       | otherwise =
         vcat (zipWith (<+>) (open  : repeat sep) xs) $$ close
+--------------------------------------------------------------------------------
+
+
 
 --------------------------------------------------------------------------------
 
+
+
 data TypeDef = TypeDef
-  { typeTS        :: TSType
-  , typeToJSON    :: Q (Pat, Exp)
-  , typeFromJSON  :: Q Exp -> Q Exp
+  { typeTS        :: TSType Name
+  , typeToJSON    :: Q (Pat, Exp)           -- a -> Value
+  , typeFromJSON  :: Q Exp -> Q Exp         -- Value -> Parser a
+  , typeToJSKey   :: Maybe (Q (Pat, Exp))   -- a -> Text
+  , typeFromJSKey :: Maybe (Q Exp -> Q Exp) -- Text -> Parser a
   }
 
 
-fromName :: Name -> Text
-fromName (Name (OccName s) _) = Text.pack s
+nameLabel :: Name -> Text
+nameLabel (Name (OccName s) _) = Text.pack s
 
-typeToTS :: Type -> Either String TSType
+typeToTS :: Type -> Either String (TSType Name)
 typeToTS ty = doApp ty []
   where
   unsupported = Left "Unsupported type."
@@ -101,7 +177,7 @@ typeToTS ty = doApp ty []
     , [t] <- args       = pure (tsMaybe t)
     | c == ''Map
     , [k,v] <- args     = pure (TSMap k v)
-    | otherwise         = pure (TSNamed (fromName c) args)
+    | otherwise         = pure (TSNamed c args)
 
   doApp f args =
     case f of
@@ -111,7 +187,7 @@ typeToTS ty = doApp ty []
       ParensT g      -> doApp g args
 
       VarT a
-        | null args     -> pure (TSNamed (fromName a) [])
+        | null args     -> pure (TSBuiltIn (nameLabel a))
 
       ConT c         -> doCon c args
       TupleT _       -> pure (TSTuple args)
@@ -121,8 +197,39 @@ typeToTS ty = doApp ty []
       _                 -> unsupported
 
 
-exportFlatType :: Name -> Q [Dec]
-exportFlatType = exportType' True
+class TextToKey a where
+  toTextKey   :: a -> Text
+  fromTextKey :: Text -> JS.Parser a
+
+instance TextToKey Text where
+  toTextKey = id
+  fromTextKey = pure
+
+showToTextKey :: Show a => a -> Text
+showToTextKey = Text.pack . show
+
+readFromTextKey :: Read a => Text -> JS.Parser a
+readFromTextKey x = case readMaybe (Text.unpack x) of
+                      Just a  -> pure a
+                      Nothing -> fail "Failed to read key"
+
+instance TextToKey Bool where
+  toTextKey = showToTextKey
+  fromTextKey = readFromTextKey
+
+instance TextToKey Int where
+  toTextKey = showToTextKey
+  fromTextKey = readFromTextKey
+
+instance TextToKey Integer where
+  toTextKey = showToTextKey
+  fromTextKey = readFromTextKey
+
+
+
+
+exportKeyType :: Name -> Q [Dec]
+exportKeyType = exportType' True
 
 exportType :: Name -> Q [Dec]
 exportType = exportType' False
@@ -134,37 +241,52 @@ exportType' flat x =
 
 
 declToTS :: Bool -> DatatypeInfo -> Q [Dec]
-declToTS flat nd =
+declToTS asKey nd =
   case mapM (doConDef untagged) cons of
     Left err -> fail err
     Right defs ->
       do ts <- toTS (map typeTS defs)
          tJ <- toJS (map typeToJSON defs)
          fJ <- fromJS (map typeFromJSON defs)
-         pure (tJ : fJ : ts)
+         let keys =
+              do tos   <- mapM typeToJSKey defs
+                 froms <- mapM typeFromJSKey defs
+                 pure (mkJSKey tos froms)
+         ks <- case keys of
+                 Nothing | asKey -> fail "Cannot use type as key"
+                         | otherwise -> pure []
+                 Just kds -> sequence kds
+         pure (tJ : fJ : ks ++ ts)
   where
   cons     = datatypeCons nd
-  untagged = flat
+  untagged = asKey
           || case datatypeCons nd of
                [_]  -> True
                _    -> all (null . constructorFields) cons
 
-  toTS :: [TSType] -> Q [Dec]
+  toTS :: [TSType Name] -> Q [Dec]
   toTS ts =
     do dS <- sigD name [t| String |]
-       let txt = show (pp d)
+       let txt = "" :: String -- show (pp d)
        dE <- mkD name [e| txt |]
        pure [dS,dE]
     where
     name = mkName ("tys" ++ nameBase (datatypeName nd))
     d = TSDecl
-          { tsName   = fromName (datatypeName nd)
-          , tsParams = map (fromName . tvName) (datatypeVars nd)
+          { tsName   = datatypeName nd
+          , tsParams = map (nameLabel . tvName) (datatypeVars nd)
           , tsDef =
               case ts of
                   [t] -> t
                   _     -> TSUnion ts
          }
+
+  mkD x e   = valD (varP x) (normalB e) []
+  mkM m     = m >>= \(p,e) -> match (pure p) (normalB (pure e)) []
+  jn f g    = [| $f <|> $g |]
+
+  alts :: Q Exp -> [Q Exp -> Q Exp] -> Q Exp
+  alts x xs = foldr1 jn [ f x | f <- xs ]
 
   toJS :: [Q (Pat,Exp)] -> Q Dec
   toJS ms =
@@ -173,19 +295,36 @@ declToTS flat nd =
     where
     jsC t = classPred ''JS.ToJSON [t]
     ctx   = [ jsC (VarT (tvName a)) | a <- datatypeVars nd ]
-    mkM m = m >>= \(p,e) -> match (pure p) (normalB (pure e)) []
 
   fromJS :: [Q Exp -> Q Exp] -> Q Dec
   fromJS xs =
     instanceD (pure ctx) (pure (jsC (datatypeType nd)))
-      [ mkD 'JS.parseJSON [| \x -> $(alts [| x |]) |] ]
+      [ mkD 'JS.parseJSON [| \x -> $(alts [| x |] xs) |] ]
     where
     jsC t     = classPred ''JS.FromJSON [t]
     ctx       = [ jsC (VarT (tvName a)) | a <- datatypeVars nd ]
-    alts x    = foldr1 jn [ f x | f <- xs ]
-    jn f g    = [| $f <|> $g |]
 
-  mkD x e = valD (varP x) (normalB e) []
+  mkJSKey :: [Q (Pat,Exp)] -> [Q Exp -> Q Exp] -> [Q Dec]
+  mkJSKey tos froms =
+    [ instanceD (pure ctx) (pure (jsC ty))
+        [ mkD 'toTextKey   [| \x -> $(caseE [| x |] (map mkM tos)) |]
+        , mkD 'fromTextKey [| \x -> $(alts [| x |] froms) |]
+        ]
+
+    , instanceD (pure ctx) (pure (classPred ''JS.ToJSONKey [ty]))
+        [ mkD 'JS.toJSONKey [| JS.toJSONKeyText toTextKey |] ]
+
+    , instanceD (pure ctx) (pure (classPred ''JS.FromJSONKey [ty]))
+        [ mkD 'JS.fromJSONKey [| JS.FromJSONKeyTextParser fromTextKey |] ]
+    ]
+    where
+    ty    = datatypeType nd
+    jsC t = classPred ''TextToKey [t]
+    ctx   = [ jsC (VarT (tvName a)) | a <- datatypeVars nd ]
+
+
+
+
 
 --------------------------------------------------------------------------------
 doConDef :: Bool -> ConstructorInfo -> Either String TypeDef
@@ -214,6 +353,9 @@ doConDef untagged con = makeDef <$> mapM typeToTS fields
                   $(typeFromJSON def [| ctr |]))
              $j
            |]
+
+        , typeToJSKey = Nothing
+        , typeFromJSKey = Nothing
       }
 
   makeDef ts =
@@ -222,15 +364,20 @@ doConDef untagged con = makeDef <$> mapM typeToTS fields
       -- No fields
       []
 
-        -- Key encoding
+        -- Just text
         | untagged ->
             TypeDef
               { typeTS = TSLit conTag
+
               , typeToJSON =
                  do (p,_) <- lhsPat
                     e     <- [| JS.String conTag |]
                     pure (p, e)
 
+              , typeToJSKey = Just
+                  do (p,_) <- lhsPat
+                     e     <- [| conTag |]
+                     pure (p,e)
 
               , typeFromJSON = \j ->
                  [| JS.withText (Text.unpack conTag) (\txt ->
@@ -238,6 +385,10 @@ doConDef untagged con = makeDef <$> mapM typeToTS fields
                          pure $conFun)
                     $j
                   |]
+
+              , typeFromJSKey = Just \j ->
+                 [| do guard ($j == conTag)
+                       pure $conFun |]
               }
 
         -- Tag + contents
@@ -250,6 +401,8 @@ doConDef untagged con = makeDef <$> mapM typeToTS fields
                        e     <- qToJson [| () |]
                        pure (p,e)
                 , typeFromJSON = const [| pure $conFun |]
+                , typeToJSKey = Nothing
+                , typeFromJSKey = Nothing
                 }
 
       -- Single field
@@ -263,7 +416,14 @@ doConDef untagged con = makeDef <$> mapM typeToTS fields
                  e      <- qToJson (head xs)
                  pure (p, e)
 
+          , typeToJSKey = Just
+            do (p,xs) <- lhsPat
+               e <- [| toTextKey $(head xs) |]
+               pure (p,e)
+
           , typeFromJSON = \j -> [| $conFun <$> $(qParseJson j) |]
+
+          , typeFromJSKey = Just \j -> [| $conFun <$> fromTextKey $j |]
           }
 
       -- Multiple fields
@@ -288,12 +448,17 @@ doConDef untagged con = makeDef <$> mapM typeToTS fields
                          stmts obj  = zipWith getF labs xs ++
                                       [noBindS [| pure $(conFunApp xs) |]]
                            where
-                           getF l x = bindS (varP x) [| $obj JS..: JS.fromText l |]
+                           getF l x =
+                             bindS (varP x) [| $obj JS..: JS.fromText l |]
 
                      [| JS.withObject "obj" $fromObj $j |]
+
+              , typeToJSKey = Nothing
+              , typeFromJSKey = Nothing
               }
+
             where
-            labs = map fromName fs
+            labs = map nameLabel fs
 
 
           -- Tuple
@@ -311,10 +476,13 @@ doConDef untagged con = makeDef <$> mapM typeToTS fields
                      [| do $(tupP (map varP xs)) <- $(qParseJson j)
                            pure $(conFunApp xs)
                       |]
+
+              , typeToJSKey = Nothing
+              , typeFromJSKey = Nothing
               }
 
   fields    = constructorFields con
-  conTag    = fromName (constructorName con)
+  conTag    = nameLabel (constructorName con)
   conFun    = conE (constructorName con)
   conFunApp = foldl appE conFun . map varE
   fieldVars = mapM (const (newName "x")) fields

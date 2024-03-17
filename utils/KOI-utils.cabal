@@ -34,7 +34,8 @@ library
   default-extensions:
     BlockArguments, ImportQualifiedPost, OverloadedStrings, DeriveGeneric,
     FlexibleContexts, MonoLocalBinds, GeneralizedNewtypeDeriving, ViewPatterns,
-    TemplateHaskell, RecordWildCards, ScopedTypeVariables
+    TemplateHaskell, RecordWildCards, ScopedTypeVariables, DefaultSignatures,
+    LambdaCase
 
 
 
