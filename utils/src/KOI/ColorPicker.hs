@@ -11,7 +11,6 @@ import qualified Data.Text as Text
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS8
 import Data.Char(toLower)
-import Data.List(foldl')
 
 import qualified Data.Aeson as JS
 
