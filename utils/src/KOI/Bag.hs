@@ -11,7 +11,7 @@ import KOI.RNG
 
 
 newtype Bag a = Bag (Map a Int)
-  deriving (Generic,ToJSON,Show)
+  deriving (Generic,ToJSON,Show,Eq,Ord)
 
 bagEmpty :: Bag a
 bagEmpty = Bag Map.empty
