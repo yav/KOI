@@ -7,6 +7,7 @@ module KOI.ColorPicker
 import Data.Map(Map)
 import qualified Data.Map as Map
 import Data.Text (Text)
+import Data.List(foldl')
 import qualified Data.Text as Text
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS8
