@@ -10,7 +10,6 @@ extra-source-files:  CHANGELOG.md
 library
   hs-source-dirs: src
   exposed-modules:
-    Test,
     KOI.Basics,
     KOI.Utils,
     KOI.Bag,
