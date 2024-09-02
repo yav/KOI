@@ -66,7 +66,7 @@ data App c = App
     -- ^ Javascript to be exported via dynamic.js
 
   , appInitialState ::
-      RNG -> Options -> [PlayerId] -> Either String (AppState c)
+      RNG -> Options -> [PlayerId] -> IO (AppState c)
     -- ^ Initial game state
 
   , appStart        :: Interact c ()
@@ -91,13 +91,9 @@ startApp app =
                                  pure Save { seed = theSeed
                                            , moves = []
                                            , opts = fullOpts }
-       case begin app save of
-         Right ok -> pure ok
-         Left err -> fail err
-
-
-begin ::
-  Component c => App c -> Save c -> Either String (ByteString, InteractState c)
+       begin app save
+       
+begin :: Component c => App c -> Save c -> IO (ByteString, InteractState c)
 begin app save =
   do state <- appInitialState app rng (opts save) ps
      let outMsg = $(jsHandlers [''OutMsg])
@@ -111,11 +107,6 @@ begin app save =
                   }
                   (moves save)
           )
-
-  where
-  (ps,cols)  = getOptPlayers (appColors app) (opts save)
-  rng        = seedRNG (seed save)
-
-
-
-
+ where
+ (ps,cols)  = getOptPlayers (appColors app) (opts save)
+ rng        = seedRNG (seed save)
