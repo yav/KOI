@@ -1,6 +1,5 @@
 packages:
-  ./interact
-  ./utils
+  ./.
   ./template
 
 documentation: true

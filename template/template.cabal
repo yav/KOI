@@ -23,8 +23,7 @@ executable TEMPLATE
     bytestring,
     text,
     aeson,
-    KOI-utils,
-    KOI-interact
+    KOI
 
   default-extensions:
     DeriveGeneric, DeriveAnyClass,
