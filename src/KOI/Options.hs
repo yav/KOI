@@ -9,6 +9,7 @@ module KOI.Options
   , Option
   , option
   , flag
+  , optionString
   , optionsDefaults
   , optionsGetOpt
   ) where
@@ -62,7 +63,8 @@ getOptString x os =
   case Map.lookup x (optHasVal os) of
     Just v  -> v
     Nothing -> error ("Option `" ++ Text.unpack x ++
-                                    "` is not, and has not default value.")
+                 "` was not provided, and has not default value.")
+
 getOptYesNo :: Text -> Options -> Bool
 getOptYesNo x opts =
   case map toLower (getOptString x opts) of
@@ -75,11 +77,19 @@ getOptYesNo x opts =
 
 data Option = Opt
   { optName    :: Text
-  , optValues  :: [String]
+  , optValues  :: OptionValues
   , optDefault :: Maybe String
   , optDescription :: String
   }
 
+data OptionValues = TextVal String -- ^ Description
+                  | EnumVal [String] -- ^ Must be set to one of these
+
+optTy :: OptionValues -> String
+optTy v =
+  case v of
+    TextVal d -> d
+    EnumVal vs -> intercalate "|" vs
 
 optionsDefaults :: [Option] -> Options
 optionsDefaults os = mempty { optHasVal = foldr addDefault Map.empty os }
@@ -90,12 +100,24 @@ optionsDefaults os = mempty { optHasVal = foldr addDefault Map.empty os }
       _      -> id
 
 
+optionString ::
+  Text -> String -> Maybe String -> String -> (Option, Options -> String)
+optionString nm ty dflt descr =
+  ( Opt { optName = nm
+        , optValues = TextVal ty
+        , optDefault = dflt
+        , optDescription = descr
+        }
+  , getOptString nm
+  )
+
+
 option ::
   (Show a, Bounded a, Enum a) =>
   Text -> Maybe a -> String -> (Option, Options -> a)
 option nm dflt descr =
   ( Opt { optName = nm
-        , optValues = vals
+        , optValues = EnumVal vals
         , optDefault = show <$> dflt
         , optDescription = descr
         }
@@ -118,7 +140,7 @@ option nm dflt descr =
 flag :: Text -> Maybe Bool -> String -> (Option, Options -> Bool)
 flag nm dflt descr =
   ( Opt { optName = nm
-        , optValues = ["yes","no"]
+        , optValues = EnumVal ["yes","no"]
         , optDefault = (\x -> if x then "yes" else "no") <$> dflt
         , optDescription = descr
         }
@@ -136,7 +158,7 @@ optionsGetOpt os = map opt os ++ common
   opt x =
    Option [] [Text.unpack (optName x)]
    (ReqArg (\v -> mempty { optHasVal = Map.singleton (optName x) v })
-           (intercalate "|" (optValues x)))
+           (optTy (optValues x)))
    (optDescription x)
 
   common =
