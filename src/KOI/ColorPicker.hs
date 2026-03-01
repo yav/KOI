@@ -60,5 +60,6 @@ jsColors :: Map PlayerId Color -> BS8.ByteString
 jsColors mp = BS8.unlines
   [ "const playerColors ="
   , LBS.toStrict (JS.encode mp)
+  , "window.playerColors = playerColors"
   ]
 
